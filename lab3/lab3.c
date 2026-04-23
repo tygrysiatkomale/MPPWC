@@ -79,7 +79,6 @@ void collideAndStream(double *c, double *tc) {
                 uy /= rho;
                 uLB[ARU(x,y)] = ux;
                 vLB[ARU(x,y)] = uy;
-
                 // Collision step
                 for (i = 0 ; i < F ; i++) {
                     fstar[i] = (1-1./tau)*c[AR(x,y,i)] + 
@@ -89,7 +88,6 @@ void collideAndStream(double *c, double *tc) {
                         }
                 }
             }
-
             // Streaming step & BC
             xp = (x + 1) % LX;
             xm = (x - 1 + LX) % LX;
@@ -170,7 +168,7 @@ int main(int argc, char *argv[]) {
     double Ma, Re, N;
 
     Ma = 0.1;
-    Re = 1000;
+    Re = 1000000;
     N = LX;
 
     double rhoi = 1;

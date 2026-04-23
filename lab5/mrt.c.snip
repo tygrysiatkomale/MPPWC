@@ -1,0 +1,58 @@
+                // MRT
+                double m_rho,m_eps,m_e,m_jx,m_jy,m_qx,m_qy,m_pxx,m_pxy;
+                double m_rhoe,m_epse,m_ee,m_jxe,m_jye,m_qxe,m_qye,m_pxxe,m_pxye;
+                double f_C,f_N,f_S,f_W,f_E,f_NE,f_NW,f_SW,f_SE;
+                f_C = c[AR(x,y,_C)];
+                f_N = c[AR(x,y,_N)];
+                f_S = c[AR(x,y,_S)];
+                f_W = c[AR(x,y,_W)];
+                f_E = c[AR(x,y,_E)];
+                f_NE = c[AR(x,y,_NE)];
+                f_NW = c[AR(x,y,_NW)];
+                f_SW = c[AR(x,y,_SW)];
+                f_SE = c[AR(x,y,_SE)];
+                // m = Mf momenty
+                m_rho = rho;
+                m_jx = rho*ux;
+                m_jy = rho*uy;
+                m_e = -(4*f_C + f_N + f_S + f_W + f_E) + 2*(f_NE + f_NW + f_SW + f_SE);
+                m_eps = 4*f_C -2*(f_N + f_S + f_W + f_E) + f_NE + f_NW + f_SW + f_SE;
+                m_qx = 2*(f_W-f_E) + f_NE + f_SE - f_NW - f_SW;
+                m_qy = 2*(f_S-f_N) + f_NW - f_SW + f_NE - f_SE;
+                m_pxx = f_E + f_W - f_N - f_S;
+                m_pxy = f_NE - f_NW - f_SE + f_SW;
+                // rownowagi momentow
+                m_rhoe = m_rho;
+                m_jxe = m_jx;
+                m_jye = m_jy;
+                m_ee = -2*rho + 3*(m_jx*m_jx + m_jy*m_jy);
+                m_epse = rho - 3*(m_jx*m_jx + m_jy*m_jy);
+                m_qxe = -m_jx;
+                m_qye = -m_jy;
+                m_pxxe = m_jx*m_jx-m_jy*m_jy;
+                m_pxye = m_jx*m_jy;
+                // czestosci relaksacji
+                double om_e, om_eps, om_q, om_nu;
+                om_e = 1;;
+                om_eps = 1;
+                om_q = 1;
+                om_nu = 1./tau;
+                // kolizja momentow
+                m_e = om_e*(m_ee - m_e);
+                m_eps = om_eps*(m_epse - m_eps);
+                m_qx = om_q*(m_qxe - m_qx);
+                m_qy = om_q*(m_qye - m_qy);
+                m_pxx = om_nu*(m_pxxe - m_pxx);
+                m_pxy = om_nu*(m_pxye - m_pxy);
+                m_rho = m_jx = m_jy = 0;
+
+                fstar[_C] = f_C + 1./9.*(m_eps - m_e);
+                fstar[_E] = f_E + 1./36.*(-m_e - 2*m_eps - 6*m_qx + 9*m_pxx);
+                fstar[_N] = f_N + 1./36.*(-m_e - 2*m_eps - 6*m_qy - 9*m_pxx);
+                fstar[_W] = f_W + 1./36.*(-m_e - 2*m_eps + 6*m_qx + 9*m_pxx);
+                fstar[_S] = f_S + 1./36.*(-m_e - 2*m_eps + 6*m_qy - 9*m_pxx);
+                fstar[_NE] = f_NE + 1./36.*(2*m_e + m_eps + 3*m_qx + 3*m_qy + 9*m_pxy);
+                fstar[_NW] = f_NW + 1./36.*(2*m_e + m_eps - 3*m_qx + 3*m_qy - 9*m_pxy);
+                fstar[_SW] = f_SW + 1./36.*(2*m_e + m_eps - 3*m_qx - 3*m_qy + 9*m_pxy);
+                fstar[_SE] = f_SE + 1./36.*(2*m_e + m_eps + 3*m_qx - 3*m_qy - 9*m_pxy);
+
