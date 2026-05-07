@@ -12,6 +12,7 @@
 
 #define AR(x,y,f) (f + F*(x) + F*LX*(y))
 #define ARU(x,y) (x + LX*(y))
+#define LES 1
 
 enum {_C, _N, _S, _W, _E, _NE, _NW, _SW, _SE};
 enum {_FLUID, _SOLID, _INLET, _OUTLETX};
@@ -123,6 +124,16 @@ void collideAndStream(double *c, double *tc) {
                 m_qye = -m_jy;
                 m_pxxe = m_jx*m_jx-m_jy*m_jy;
                 m_pxye = m_jx*m_jy;
+                double taut = tau;
+
+#if  LES == 1
+    #define C 0.18
+    double Q = (rho/3.-m_jx*m_jx/rho+m_e/6.+m_pxx/2.)*(rho/3.-m_jx*m_jx/rho+m_e/6.+m_pxx/2.) +
+                (rho/3.-m_jy*m_jy/rho+m_e/6.-m_pxx/2.)*(rho/3.-m_jy*m_jy/rho+m_e/6.-m_pxx/2.) +
+                2*(m_pxy - m_jx*m_jx/rho)*(m_pxy - m_jx*m_jx/rho);
+    taut = 0.5*(sqrt(tau*tau+C*C*18*sqrt(2*Q)/rho)+tau);
+#endif
+
                 // czestosci relaksacji
                 double om_e, om_eps, om_q, om_nu;
                 om_e = 1.63;
@@ -259,7 +270,7 @@ int maxIter = 1000000;
 
 double Ma, Re, N;
 
-Ma = 0.1;
+Ma = 0.3;
 Re = 1e5;
 N = LY;
 
