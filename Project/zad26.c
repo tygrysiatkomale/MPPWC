@@ -12,8 +12,15 @@
 
 #define AR(x,y,f) (f + F*(x) + F*LX*(y))
 #define ARU(x,y) (x + LX*(y))
+#define TEST_MODE 0
+
+#if TEST_MODE
+#define LES 0
+#define D 16
+#else
 #define LES 1
 #define D 32
+#endif
 
 enum {_C, _N, _S, _W, _E, _NE, _NW, _SW, _SE};
 enum {_FLUID, _SOLID, _INLET, _OUTLETX};
@@ -32,6 +39,12 @@ double tau;
 double *uLB, *vLB, *rhoLB;
 int *map;
 double rho_IN, ux_IN, uy_IN;
+
+int isBottomObstacle(int x, int y) {
+    int first_obstacle = (x >= 2*D && x < 3*D && y <= D);
+    int second_obstacle = (x >= 4*D && x < 5*D && y <= D);
+    return first_obstacle || second_obstacle;
+}
 
 double fEq(int i, double rho, double u, double v) {
     double cu = (cx[i]*u + cy[i]*v)/cs_sq;
@@ -69,15 +82,12 @@ void collideAndStream(double *c, double *tc) {
                 uLB[ARU(x,y)] = ux_IN;
                 vLB[ARU(x,y)] = uy_IN;                    
             } else if ( mp == _OUTLETX ) {
-                double rho_xm = rhoLB[ARU(x-1,y)]; // 1.
-                double ux_xm = uLB[ARU(x-1,y)];
-                double uy_xm = vLB[ARU(x-1,y)];
                 for( i = 0; i < F; i++ ) {
-                    fstar[i] = fEq(i, rho_xm, ux_xm, uy_xm);
+                    fstar[i] = c[AR(x-1,y,i)];
                 }
-                rhoLB[ARU(x,y)] = rho_xm;
-                uLB[ARU(x,y)] = ux_xm;
-                vLB[ARU(x,y)] = uy_xm;                    
+                rhoLB[ARU(x,y)] = rhoLB[ARU(x-1,y)];
+                uLB[ARU(x,y)] = uLB[ARU(x-1,y)];
+                vLB[ARU(x,y)] = vLB[ARU(x-1,y)];                    
             } else {// Compute macroscopic variables
                 rho = 0; ux = 0; uy = 0;
                 for (i = 0; i < F; i++) {
@@ -140,7 +150,7 @@ void collideAndStream(double *c, double *tc) {
                 om_e = 1.63;
                 om_eps = 1.54;
                 om_q = 1.9;
-                om_nu = 1./tau;
+                om_nu = 1./taut;
                 // kolizja momentow
                 m_e = om_e*(m_ee - m_e);
                 m_eps = om_eps*(m_epse - m_eps);
@@ -189,16 +199,23 @@ void collideAndStream(double *c, double *tc) {
     }
 }
 
-void 
-setInitialConditions(double rhoi, double ui, double vi, double *c) {
+void setInitialConditions(double rhoi, double ui, double vi, double *c) {
  int x, y, i;
     for (y = 0; y < LY; y++) {
         for (x = 0; x < LX; x++) {
 
-            if ( y == 0 || y == LY-1 ) map[ARU(x,y)] = _SOLID;
-            else if (x == 0) map[ARU(x,y)] = _INLET;
-            else if (x == LX-1) map[ARU(x,y)] = _OUTLETX;
-            else map[ARU(x,y)] = _FLUID;
+            if ( y == 0 || y == LY-1 || isBottomObstacle(x, y)) {
+                map[ARU(x,y)] = _SOLID;
+            }
+            else if (x == 0) {
+                map[ARU(x,y)] = _INLET;
+            }
+            else if (x == LX-1) {
+                map[ARU(x,y)] = _OUTLETX;
+            }
+            else {
+                map[ARU(x,y)] = _FLUID;
+            }
 
             // Set velocity to double sheer layer pattern
             uLB[ARU(x,y)] = ui;// * sin(2*M_PI*x/LX) + cos(2*M_PI*y/LY);
@@ -209,16 +226,6 @@ setInitialConditions(double rhoi, double ui, double vi, double *c) {
             }
         }
     }
-    
- for ( y = LY/2 - 8; y < LY/2 + 8; y++) 
-    for (x = 4 + LX/4 - 8; x < 4 + LX/4 + 8; x++)
-        map[ARU(x,y)] = _SOLID;  
-
- for ( y = 8 + LY/2 - 8; y < 8 +LY/2 + 8; y++) 
-    for (x = 30 + LX/4 - 8; x < 30 + LX/4 + 8; x++)
-        map[ARU(x,y)] = _SOLID;  
-
-
 }
 
 void dumpStateVTK(char *fname) {
@@ -271,19 +278,21 @@ int maxIter = 1000000;
 
 double Ma, Re, N;
 
-Ma = 0.3;
+Ma = 0.03;
 Re = 1e5;
-N = LY;
+N = D;
 
 double rhoi = 1;
 double ui = 0; 
 double vi = 0;
 
 rho_IN = 1;
-ux_IN = Ma*sqrt(cs_sq);
+ux_IN = Ma * sqrt(cs_sq);
 uy_IN = 0;
 
-double nuLB = ux_IN*N/Re;
+double nuLB = ux_IN * D / Re;
+
+tau = nuLB/cs_sq + 0.5;
 
 cells = (double*)malloc(LX*LY*F*sizeof(double));
 temp_cells = (double*)malloc(LX*LY*F*sizeof(double));
@@ -292,8 +301,6 @@ uLB = (double*)malloc(LX*LY*sizeof(double));
 vLB = (double*)malloc(LX*LY*sizeof(double));
 rhoLB = (double*)malloc(LX*LY*sizeof(double));
 map = (int*)malloc(LX*LY*sizeof(int));
-
-tau = nuLB/cs_sq + 0.5;
 
 printf("tau = %f\n", tau);
 printf("nuLB = %f\n", nuLB);
@@ -319,9 +326,42 @@ do {
 
     vis_draw_rho(&rho_vis, rhoLB, uLB, vLB, LX, LY, F);
     vis_draw_speed(&vel_vis, rhoLB, uLB, vLB, LX, LY, F);
+    printf("Iteracja: %d / %d\n", iter, maxIter);
 
 } while (iter < maxIter);
 dumpStateVTK("output_final.vtk");
+
+// int DRAW_EVERY = 10000;
+// int VTK_EVERY = 10000;
+
+// dumpStateVTK("output_000.vtk");
+
+// do {
+//     if (iter % 2)
+//         collideAndStream(temp_cells, cells);
+//     else
+//         collideAndStream(cells, temp_cells);
+
+//     iter++;
+
+//     if (iter % DRAW_EVERY == 0) {
+//         vis_draw_rho(&rho_vis, rhoLB, uLB, vLB, LX, LY, F);
+//         vis_draw_speed(&vel_vis, rhoLB, uLB, vLB, LX, LY, F);
+
+//         printf("Iteracja: %d / %d\n", iter, maxIter);
+//         fflush(stdout);
+//     }
+
+//     if (iter % VTK_EVERY == 0) {
+//         char fname[64];
+//         sprintf(fname, "output_%06d.vtk", iter);
+//         dumpStateVTK(fname);
+//     }
+
+// } while (iter < maxIter);
+
+// dumpStateVTK("output_final.vtk");
+
 
 free(cells);
 free(temp_cells);

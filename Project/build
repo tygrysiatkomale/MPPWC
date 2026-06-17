@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc d2q9nse.c -O3 -lX11 -lm -o d2q9nse
+gcc zad26.c -O3 -lX11 -lm -o zad26
